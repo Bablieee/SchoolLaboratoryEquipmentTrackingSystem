@@ -1,17 +1,17 @@
 
-package ui;
+package com.schoollaboratory.ui;
 
-import dao.UserDao;
-import model.User;
+import com.schoollaboratory.dao.UserDao;
+import com.schoollaboratory.model.User;
 
 import java.util.Scanner;
 
-public class Menu {
+public class Authentication {
 
     private final UserDao userDao;
     private final Scanner scanner;
 
-    public Menu(UserDao userDao, Scanner scanner) {
+    public Authentication(UserDao userDao, Scanner scanner) {
         this.userDao = userDao;
         this.scanner = scanner;
     }
@@ -49,10 +49,20 @@ public class Menu {
         System.out.println("\n========== REGISTER ACCOUNT ==========");
 
         System.out.print("Enter username: ");
-        String username = scanner.nextLine();
+        String username = scanner.nextLine().trim();
+
+        if (username.isEmpty()) {
+            System.out.println("Username cannot be empty.");
+            return;
+        }
 
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
+
+        if (password.isEmpty()) {
+            System.out.println("Password cannot be empty.");
+            return;
+        }
 
         System.out.println("\nSelect Role:");
         System.out.println("1. ADMINISTRATOR");
@@ -127,11 +137,17 @@ public class Menu {
                 adminMenu.start(user);
             }
 
-            case "LABORATORY STAFF" ->
-                    System.out.println("Laboratory Staff Menu is not yet created.");
+            case "LABORATORY STAFF" -> {
+                System.out.println("\n===== LABORATORY STAFF =====");
+                System.out.println("Welcome, " + user.username());
+                System.out.println("Staff access is not yet implemented.");
+            }
 
-            case "EQUIPMENT VIEWER" ->
-                    System.out.println("Equipment Viewer Menu is not yet created.");
+            case "EQUIPMENT VIEWER" -> {
+                System.out.println("\n===== EQUIPMENT VIEWER =====");
+                System.out.println("Welcome, " + user.username());
+                System.out.println("Equipment viewing is not yet implemented.");
+            }
 
             default -> System.out.println("Unknown user role.");
         }

@@ -1,5 +1,4 @@
-
-package model;
+package com.schoollaboratory.model;
 
 public record User(
         int id,

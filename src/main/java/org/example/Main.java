@@ -1,6 +1,9 @@
 
-import dao.UserDao;
-import ui.Menu;
+package com.schoollaboratory;
+
+import com.schoollaboratory.dao.UserDao;
+import com.schoollaboratory.dao.DatabaseInitializer;
+import com.schoollaboratory.ui.Authentication;
 
 import java.util.Scanner;
 
@@ -8,16 +11,16 @@ public class Main {
 
     public static void main(String[] args) {
 
-        UserDao userDao = new UserDao();
+        DatabaseInitializer.initialize();
 
-        // Initialize database table
-        userDao.createTable();
+        UserDao userDao = new UserDao();
 
         Scanner scanner = new Scanner(System.in);
 
-        // Start application menu
-        Menu menu = new Menu(userDao, scanner);
-        menu.start();
+        Authentication authentication =
+                new Authentication(userDao, scanner);
+
+        authentication.start();
 
         scanner.close();
     }
