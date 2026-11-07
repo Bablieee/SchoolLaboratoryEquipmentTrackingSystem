@@ -17,134 +17,170 @@ public class AdminMenu {
         this.scanner = scanner;
     }
 
+    // ADMIN MENU
     public void start(User admin) {
 
-        boolean running = true;
+        int choice;
 
-        while (running) {
-
-            System.out.println("\n====================================");
-            System.out.println("       ADMINISTRATOR MENU");
-            System.out.println("====================================");
-            System.out.println("Welcome, " + admin.username());
-            System.out.println("1. View All Accounts");
-            System.out.println("2. Approve Account");
-            System.out.println("3. Logout");
+        do {
+            System.out.println("\n==================================");
+            System.out.println("          ADMIN MENU");
+            System.out.println("==================================");
+            System.out.println("1. View All System Users");
+            System.out.println("2. View Pending Registrations");
+            System.out.println("3. Approve User Account");
+            System.out.println("4. Logout");
+            System.out.println("==================================");
             System.out.print("Enter choice: ");
 
-            String choice = scanner.nextLine();
+            choice = readChoice();
 
             switch (choice) {
 
-                case "1" -> viewAllAccounts();
+                case 1:
+                    viewAllUsers();
+                    break;
 
-                case "2" -> approveAccount();
+                case 2:
+                    viewPendingUsers();
+                    break;
 
-                case "3" -> {
-                    System.out.println("Logging out...");
-                    running = false;
-                }
+                case 3:
+                    approveUser();
+                    break;
 
-                default ->
-                        System.out.println("Invalid choice. Try again.");
+                case 4:
+                    System.out.println("\nAdmin logged out successfully!");
+                    break;
+
+                default:
+                    System.out.println("\nInvalid choice. Please try again.");
             }
+
+        } while (choice != 4);
+    }
+
+    // VIEW ALL SYSTEM USERS
+    private void viewAllUsers() {
+
+        System.out.println("\n========== ALL SYSTEM USERS ==========");
+
+        List<User> users = userDao.getAllUsers();
+
+        displayUserTable(users);
+    }
+
+    // VIEW PENDING REGISTRATIONS
+    private void viewPendingUsers() {
+
+        System.out.println("\n========== PENDING REGISTRATIONS ==========");
+
+        List<User> users = userDao.getPendingUsers();
+
+        displayUserTable(users);
+    }
+
+    // APPROVE USER ACCOUNT
+    private void approveUser() {
+
+        System.out.println("\n========== APPROVE USER ACCOUNT ==========");
+
+        List<User> pendingUsers = userDao.getPendingUsers();
+
+        if (pendingUsers.isEmpty()) {
+            System.out.println("No pending registrations found.");
+            return;
+        }
+
+        displayUserTable(pendingUsers);
+
+        System.out.println("\nEnter 0 to cancel approval.");
+        System.out.print("Enter User ID to approve: ");
+
+        int userId = readChoice();
+
+        if (userId == 0) {
+            System.out.println("Approval cancelled.");
+            return;
+        }
+
+        // VERIFY USER ID IN PENDING LIST
+        boolean userExists = pendingUsers.stream()
+                .anyMatch(user -> user.id() == userId);
+
+        if (!userExists) {
+            System.out.println(
+                    "User ID not found in pending registrations."
+            );
+            return;
+        }
+
+        // APPROVE ACCOUNT
+        boolean approved = userDao.approveUser(userId);
+
+        if (approved) {
+            System.out.println(
+                    "\nUser account approved successfully!"
+            );
+        } else {
+            System.out.println(
+                    "\nUnable to approve user account."
+            );
         }
     }
 
-    // VIEW ALL ACCOUNTS
-    private void viewAllAccounts() {
-
-        System.out.println("\n========== ALL REGISTERED ACCOUNTS ==========");
-
-        List<User> users = userDao.getAllUsers();
+    // FORMATTED USER TABLE
+    private void displayUserTable(List<User> users) {
 
         if (users.isEmpty()) {
-            System.out.println("No registered accounts found.");
+            System.out.println("No user records found.");
             return;
         }
 
+        String line =
+                "---------------------------------------------------------------";
+
+        String format = "%-5s | %-15s | %-20s | %-10s%n";
+
+        System.out.println(line);
+
+        System.out.printf(
+                format,
+                "ID",
+                "USERNAME",
+                "ROLE",
+                "STATUS"
+        );
+
+        System.out.println(line);
+
         for (User user : users) {
 
-            System.out.println("------------------------------------");
-            System.out.println("Account ID: " + user.id());
-            System.out.println("Username: " + user.username());
-            System.out.println("Role: " + user.role());
-            System.out.println("Status: " + user.status());
+            System.out.printf(
+                    format,
+                    user.id(),
+                    user.username(),
+                    user.role(),
+                    user.status()
+            );
         }
 
-        System.out.println("------------------------------------");
+        System.out.println(line);
     }
 
-    // APPROVE ACCOUNT
-    private void approveAccount() {
+    // SAFE INTEGER INPUT
+    private int readChoice() {
 
-        System.out.println("\n========== APPROVE ACCOUNT ==========");
+        while (true) {
 
-        List<User> users = userDao.getAllUsers();
+            String input = scanner.nextLine().trim();
 
-        boolean hasPending = false;
+            try {
+                return Integer.parseInt(input);
 
-        for (User user : users) {
-
-            if (user.status().equalsIgnoreCase("PENDING")) {
-
-                hasPending = true;
-
-                System.out.println("------------------------------------");
-                System.out.println("Account ID: " + user.id());
-                System.out.println("Username: " + user.username());
-                System.out.println("Role: " + user.role());
-                System.out.println("Status: " + user.status());
+            } catch (NumberFormatException e) {
+                System.out.print("Invalid input. Enter a number: ");
             }
-        }
-
-        if (!hasPending) {
-
-            System.out.println("No pending accounts to approve.");
-            return;
-        }
-
-        System.out.print("\nEnter Account ID to approve: ");
-
-        try {
-
-            int id = Integer.parseInt(scanner.nextLine().trim());
-
-            // CHECK IF THE SELECTED ACCOUNT IS PENDING
-            boolean isPending = users.stream().anyMatch(user ->
-                    user.id() == id &&
-                            user.status().equalsIgnoreCase("PENDING")
-            );
-
-            if (!isPending) {
-
-                System.out.println(
-                        "\nAccount not found or is already approved."
-                );
-
-                return;
-            }
-
-            boolean updated = userDao.updateStatus(id, "APPROVED");
-
-            if (updated) {
-
-                System.out.println(
-                        "\nAccount approved successfully!"
-                );
-
-            } else {
-
-                System.out.println(
-                        "\nUnable to approve account. Please try again."
-                );
-            }
-
-        } catch (NumberFormatException e) {
-
-            System.out.println(
-                    "Invalid ID. Please enter a number."
-            );
         }
     }
 }

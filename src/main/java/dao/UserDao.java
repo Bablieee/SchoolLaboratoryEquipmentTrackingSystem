@@ -21,9 +21,7 @@ public class UserDao {
                 VALUES (?, ?, ?, 'PENDING')
                 """;
 
-        try (Connection connection =
-                     DatabaseConnection.getConnection();
-
+        try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement =
                      connection.prepareStatement(sql)) {
 
@@ -34,11 +32,7 @@ public class UserDao {
             return statement.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println(
-                    "Registration failed: " + e.getMessage()
-            );
-
+            System.out.println("Registration failed: " + e.getMessage());
             return false;
         }
     }
@@ -51,9 +45,7 @@ public class UserDao {
                 WHERE username = ? AND password = ?
                 """;
 
-        try (Connection connection =
-                     DatabaseConnection.getConnection();
-
+        try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement =
                      connection.prepareStatement(sql)) {
 
@@ -63,7 +55,6 @@ public class UserDao {
             try (ResultSet result = statement.executeQuery()) {
 
                 if (result.next()) {
-
                     return new User(
                             result.getInt("id"),
                             result.getString("username"),
@@ -75,10 +66,7 @@ public class UserDao {
             }
 
         } catch (SQLException e) {
-
-            System.out.println(
-                    "Login error: " + e.getMessage()
-            );
+            System.out.println("Login error: " + e.getMessage());
         }
 
         return null;
@@ -89,14 +77,11 @@ public class UserDao {
 
         List<User> users = new ArrayList<>();
 
-        String sql = "SELECT * FROM users";
+        String sql = "SELECT * FROM users ORDER BY id";
 
-        try (Connection connection =
-                     DatabaseConnection.getConnection();
-
+        try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement =
                      connection.prepareStatement(sql);
-
              ResultSet result = statement.executeQuery()) {
 
             while (result.next()) {
@@ -111,38 +96,66 @@ public class UserDao {
             }
 
         } catch (SQLException e) {
-
-            System.out.println(
-                    "Error viewing accounts: " + e.getMessage()
-            );
+            System.out.println("Error viewing accounts: " + e.getMessage());
         }
 
         return users;
     }
 
-    // APPROVE OR UPDATE ACCOUNT STATUS
-    public boolean updateStatus(int id, String status) {
+    // VIEW PENDING REGISTRATIONS
+    public List<User> getPendingUsers() {
 
-        String sql =
-                "UPDATE users SET status = ? WHERE id = ? AND status = 'PENDING'";
+        List<User> users = new ArrayList<>();
 
-        try (Connection connection =
-                     DatabaseConnection.getConnection();
+        String sql = """
+                SELECT * FROM users
+                WHERE status = 'PENDING'
+                ORDER BY id
+                """;
 
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement =
+                     connection.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
+
+            while (result.next()) {
+
+                users.add(new User(
+                        result.getInt("id"),
+                        result.getString("username"),
+                        result.getString("password"),
+                        result.getString("role"),
+                        result.getString("status")
+                ));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error viewing pending accounts: "
+                    + e.getMessage());
+        }
+
+        return users;
+    }
+
+    // APPROVE PENDING USER ACCOUNT
+    public boolean approveUser(int userId) {
+
+        String sql = """
+                UPDATE users
+                SET status = 'APPROVED'
+                WHERE id = ? AND status = 'PENDING'
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement =
                      connection.prepareStatement(sql)) {
 
-            statement.setString(1, status);
-            statement.setInt(2, id);
+            statement.setInt(1, userId);
 
             return statement.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println(
-                    "Error updating account: " + e.getMessage()
-            );
-
+            System.out.println("Error approving account: " + e.getMessage());
             return false;
         }
     }
