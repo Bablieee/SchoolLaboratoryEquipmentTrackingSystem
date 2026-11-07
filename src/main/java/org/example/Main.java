@@ -1,8 +1,7 @@
-
 package com.schoollaboratory;
 
-import com.schoollaboratory.dao.UserDao;
 import com.schoollaboratory.dao.DatabaseInitializer;
+import com.schoollaboratory.dao.UserDao;
 import com.schoollaboratory.ui.Authentication;
 
 import java.util.Scanner;
@@ -11,17 +10,34 @@ public class Main {
 
     public static void main(String[] args) {
 
-        DatabaseInitializer.initialize();
+        // STEP 1: INITIALIZE DATABASE
+
+        if (!DatabaseInitializer.initialize()) {
+
+            System.out.println(
+                    "Application cannot start because database "
+                            + "initialization failed."
+            );
+
+            return;
+        }
+
+        // STEP 2: INSTANTIATE DAO AND SCANNER
 
         UserDao userDao = new UserDao();
 
-        Scanner scanner = new Scanner(System.in);
+        try (Scanner scanner = new Scanner(System.in)) {
 
-        Authentication authentication =
-                new Authentication(userDao, scanner);
+            // STEP 3: INSTANTIATE AUTHENTICATION
 
-        authentication.start();
+            Authentication authentication =
+                    new Authentication(userDao, scanner);
 
-        scanner.close();
+            // STEP 4: DELEGATE EXECUTION
+
+            authentication.start();
+        }
+
+        System.out.println("Application closed successfully.");
     }
 }

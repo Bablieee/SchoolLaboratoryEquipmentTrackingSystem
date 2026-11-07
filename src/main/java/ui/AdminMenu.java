@@ -45,11 +45,13 @@ public class AdminMenu {
                     running = false;
                 }
 
-                default -> System.out.println("Invalid choice. Try again.");
+                default ->
+                        System.out.println("Invalid choice. Try again.");
             }
         }
     }
 
+    // VIEW ALL ACCOUNTS
     private void viewAllAccounts() {
 
         System.out.println("\n========== ALL REGISTERED ACCOUNTS ==========");
@@ -73,6 +75,7 @@ public class AdminMenu {
         System.out.println("------------------------------------");
     }
 
+    // APPROVE ACCOUNT
     private void approveAccount() {
 
         System.out.println("\n========== APPROVE ACCOUNT ==========");
@@ -96,6 +99,7 @@ public class AdminMenu {
         }
 
         if (!hasPending) {
+
             System.out.println("No pending accounts to approve.");
             return;
         }
@@ -104,18 +108,43 @@ public class AdminMenu {
 
         try {
 
-            int id = Integer.parseInt(scanner.nextLine());
+            int id = Integer.parseInt(scanner.nextLine().trim());
+
+            // CHECK IF THE SELECTED ACCOUNT IS PENDING
+            boolean isPending = users.stream().anyMatch(user ->
+                    user.id() == id &&
+                            user.status().equalsIgnoreCase("PENDING")
+            );
+
+            if (!isPending) {
+
+                System.out.println(
+                        "\nAccount not found or is already approved."
+                );
+
+                return;
+            }
 
             boolean updated = userDao.updateStatus(id, "APPROVED");
 
             if (updated) {
-                System.out.println("\nAccount approved successfully!");
+
+                System.out.println(
+                        "\nAccount approved successfully!"
+                );
+
             } else {
-                System.out.println("\nAccount not found. Please try again.");
+
+                System.out.println(
+                        "\nUnable to approve account. Please try again."
+                );
             }
 
         } catch (NumberFormatException e) {
-            System.out.println("Invalid ID. Please enter a number.");
+
+            System.out.println(
+                    "Invalid ID. Please enter a number."
+            );
         }
     }
 }

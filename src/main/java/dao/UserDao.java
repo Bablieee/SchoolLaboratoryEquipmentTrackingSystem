@@ -16,12 +16,16 @@ public class UserDao {
     public boolean register(User user) {
 
         String sql = """
-                INSERT INTO users (username, password, role, status)
+                INSERT INTO users
+                (username, password, role, status)
                 VALUES (?, ?, ?, 'PENDING')
                 """;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection =
+                     DatabaseConnection.getConnection();
+
+             PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
 
             statement.setString(1, user.username());
             statement.setString(2, user.password());
@@ -30,7 +34,11 @@ public class UserDao {
             return statement.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.out.println("Registration failed: " + e.getMessage());
+
+            System.out.println(
+                    "Registration failed: " + e.getMessage()
+            );
+
             return false;
         }
     }
@@ -43,8 +51,11 @@ public class UserDao {
                 WHERE username = ? AND password = ?
                 """;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection =
+                     DatabaseConnection.getConnection();
+
+             PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
 
             statement.setString(1, username);
             statement.setString(2, password);
@@ -52,6 +63,7 @@ public class UserDao {
             try (ResultSet result = statement.executeQuery()) {
 
                 if (result.next()) {
+
                     return new User(
                             result.getInt("id"),
                             result.getString("username"),
@@ -63,7 +75,10 @@ public class UserDao {
             }
 
         } catch (SQLException e) {
-            System.out.println("Login error: " + e.getMessage());
+
+            System.out.println(
+                    "Login error: " + e.getMessage()
+            );
         }
 
         return null;
@@ -76,8 +91,12 @@ public class UserDao {
 
         String sql = "SELECT * FROM users";
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
+        try (Connection connection =
+                     DatabaseConnection.getConnection();
+
+             PreparedStatement statement =
+                     connection.prepareStatement(sql);
+
              ResultSet result = statement.executeQuery()) {
 
             while (result.next()) {
@@ -92,7 +111,10 @@ public class UserDao {
             }
 
         } catch (SQLException e) {
-            System.out.println("Error viewing accounts: " + e.getMessage());
+
+            System.out.println(
+                    "Error viewing accounts: " + e.getMessage()
+            );
         }
 
         return users;
@@ -101,10 +123,14 @@ public class UserDao {
     // APPROVE OR UPDATE ACCOUNT STATUS
     public boolean updateStatus(int id, String status) {
 
-        String sql = "UPDATE users SET status = ? WHERE id = ?";
+        String sql =
+                "UPDATE users SET status = ? WHERE id = ? AND status = 'PENDING'";
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection =
+                     DatabaseConnection.getConnection();
+
+             PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
 
             statement.setString(1, status);
             statement.setInt(2, id);
@@ -112,7 +138,11 @@ public class UserDao {
             return statement.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.out.println("Error updating account: " + e.getMessage());
+
+            System.out.println(
+                    "Error updating account: " + e.getMessage()
+            );
+
             return false;
         }
     }
