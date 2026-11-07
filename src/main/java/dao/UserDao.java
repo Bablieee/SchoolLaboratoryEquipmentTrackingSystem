@@ -22,8 +22,7 @@ public class UserDao {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, user.username());
             statement.setString(2, user.password());
@@ -46,8 +45,7 @@ public class UserDao {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, username);
             statement.setString(2, password);
@@ -80,8 +78,7 @@ public class UserDao {
         String sql = "SELECT * FROM users ORDER BY id";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql);
+             PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet result = statement.executeQuery()) {
 
             while (result.next()) {
@@ -114,8 +111,7 @@ public class UserDao {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql);
+             PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet result = statement.executeQuery()) {
 
             while (result.next()) {
@@ -138,7 +134,7 @@ public class UserDao {
     }
 
     // APPROVE PENDING USER ACCOUNT
-    public boolean approveUser(int userId) {
+    public boolean approveUser(int userId, int adminId) {
 
         String sql = """
                 UPDATE users
@@ -146,13 +142,40 @@ public class UserDao {
                 WHERE id = ? AND status = 'PENDING'
                 """;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+        try (Connection connection = DatabaseConnection.getConnection()) {
 
-            statement.setInt(1, userId);
+            connection.setAutoCommit(false);
 
-            return statement.executeUpdate() > 0;
+            try (PreparedStatement statement =
+                         connection.prepareStatement(sql)) {
+
+                statement.setInt(1, userId);
+
+                int rowsUpdated = statement.executeUpdate();
+
+                if (rowsUpdated == 0) {
+                    connection.rollback();
+                    return false;
+                }
+
+                String description =
+                        "Administrator ID: " + adminId
+                                + " approved user account ID: " + userId + ".";
+
+                recordActivity(
+                        connection,
+                        adminId,
+                        "USER_APPROVED",
+                        description
+                );
+
+                connection.commit();
+                return true;
+
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
 
         } catch (SQLException e) {
             System.out.println("Error approving account: " + e.getMessage());
@@ -162,7 +185,10 @@ public class UserDao {
 
     // UPDATE USER ROLE AND STATUS
     public boolean updateUserRoleAndStatus(
-            int userId, String newRole, String newStatus) {
+            int userId,
+            String newRole,
+            String newStatus,
+            int adminId) {
 
         String sql = """
                 UPDATE users
@@ -170,20 +196,73 @@ public class UserDao {
                 WHERE id = ?
                 """;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+        try (Connection connection = DatabaseConnection.getConnection()) {
 
-            statement.setString(1, newRole.toUpperCase());
-            statement.setString(2, newStatus.toUpperCase());
-            statement.setInt(3, userId);
+            connection.setAutoCommit(false);
 
-            return statement.executeUpdate() > 0;
+            try (PreparedStatement statement =
+                         connection.prepareStatement(sql)) {
+
+                statement.setString(1, newRole.toUpperCase());
+                statement.setString(2, newStatus.toUpperCase());
+                statement.setInt(3, userId);
+
+                int rowsUpdated = statement.executeUpdate();
+
+                if (rowsUpdated == 0) {
+                    connection.rollback();
+                    return false;
+                }
+
+                String description =
+                        "Administrator ID: " + adminId
+                                + " updated user ID: " + userId
+                                + " to Role: " + newRole.toUpperCase()
+                                + ", Status: " + newStatus.toUpperCase() + ".";
+
+                recordActivity(
+                        connection,
+                        adminId,
+                        "USER_UPDATED",
+                        description
+                );
+
+                connection.commit();
+                return true;
+
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
 
         } catch (SQLException e) {
             System.out.println("Error updating user account: "
                     + e.getMessage());
             return false;
+        }
+    }
+
+    // RECORD ACTIVITY USING THE SAME DATABASE CONNECTION
+    private void recordActivity(
+            Connection connection,
+            int userId,
+            String actionType,
+            String description) throws SQLException {
+
+        String sql = """
+                INSERT INTO activity_logs
+                (user_id, action_type, description)
+                VALUES (?, ?, ?)
+                """;
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
+
+            statement.setInt(1, userId);
+            statement.setString(2, actionType);
+            statement.setString(3, description);
+
+            statement.executeUpdate();
         }
     }
 }

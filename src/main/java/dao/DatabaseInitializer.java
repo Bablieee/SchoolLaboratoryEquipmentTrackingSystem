@@ -1,7 +1,9 @@
+
 package com.schoollaboratory.dao;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -29,32 +31,13 @@ public class DatabaseInitializer {
                 )
                 """;
 
-        String logsSQL = """
-                CREATE TABLE IF NOT EXISTS activity_logs (
-                    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    equipment_id INTEGER,
-                    action TEXT NOT NULL,
-                    date_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-                    FOREIGN KEY (user_id)
-                    REFERENCES users(id),
-
-                    FOREIGN KEY (equipment_id)
-                    REFERENCES equipment(equipment_id)
-                )
-                """;
-
-        try (Connection connection =
-                     DatabaseConnection.getConnection();
-
+        try (Connection connection = DatabaseConnection.getConnection();
              Statement statement = connection.createStatement()) {
 
             statement.execute(usersSQL);
-
             statement.execute(equipmentSQL);
 
-            statement.execute(logsSQL);
+            migrateActivityLogs(connection);
 
             createDefaultAdmin(connection);
 
@@ -65,11 +48,97 @@ public class DatabaseInitializer {
         } catch (SQLException e) {
 
             System.out.println(
-                    "Database initialization failed: "
-                            + e.getMessage()
+                    "Database initialization failed: " + e.getMessage()
             );
 
             return false;
+        }
+    }
+
+    private static void migrateActivityLogs(Connection connection)
+            throws SQLException {
+
+        boolean tableExists;
+
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT name FROM sqlite_master " +
+                        "WHERE type = 'table' AND name = ?")) {
+
+            statement.setString(1, "activity_logs");
+
+            try (ResultSet result = statement.executeQuery()) {
+                tableExists = result.next();
+            }
+        }
+
+        if (tableExists && !hasColumn(connection, "action_type")) {
+
+            try (Statement statement = connection.createStatement()) {
+
+                statement.execute(
+                        "ALTER TABLE activity_logs " +
+                                "RENAME TO activity_logs_legacy"
+                );
+            }
+
+            createActivityLogsTable(connection);
+
+            String migrateSQL = """
+                    INSERT INTO activity_logs
+                    (id, user_id, action_type, description, timestamp)
+                    SELECT log_id, user_id, action, action, date_time
+                    FROM activity_logs_legacy
+                    """;
+
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate(migrateSQL);
+
+                statement.execute("DROP TABLE activity_logs_legacy");
+            }
+
+        } else {
+
+            createActivityLogsTable(connection);
+        }
+    }
+
+    private static boolean hasColumn(Connection connection, String columnName)
+            throws SQLException {
+
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     "PRAGMA table_info(activity_logs)")) {
+
+            while (result.next()) {
+
+                if (result.getString("name").equalsIgnoreCase(columnName)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static void createActivityLogsTable(Connection connection)
+            throws SQLException {
+
+        String logsSQL = """
+                CREATE TABLE IF NOT EXISTS activity_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    action_type TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                    FOREIGN KEY (user_id)
+                    REFERENCES users(id)
+                    ON DELETE CASCADE
+                )
+                """;
+
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(logsSQL);
         }
     }
 

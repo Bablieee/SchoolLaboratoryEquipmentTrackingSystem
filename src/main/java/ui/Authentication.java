@@ -1,6 +1,8 @@
+
 package com.schoollaboratory.ui;
 
 import com.schoollaboratory.dao.UserDao;
+import com.schoollaboratory.dao.ActivityLogDao;
 import com.schoollaboratory.model.User;
 
 import java.util.Scanner;
@@ -8,11 +10,13 @@ import java.util.Scanner;
 public class Authentication {
 
     private final UserDao userDao;
+    private final ActivityLogDao activityLogDao;
     private final Scanner scanner;
 
     public Authentication(UserDao userDao, Scanner scanner) {
 
         this.userDao = userDao;
+        this.activityLogDao = new ActivityLogDao();
         this.scanner = scanner;
     }
 
@@ -168,6 +172,14 @@ public class Authentication {
             return;
         }
 
+        // RECORD LOGIN ACTIVITY
+        activityLogDao.logAction(
+                user.id(),
+                "USER_LOGIN",
+                "User " + user.username()
+                        + " (ID: " + user.id() + ") logged in."
+        );
+
         System.out.println("\nLogin successful!");
 
         System.out.println("Welcome, " + user.username());
@@ -175,7 +187,6 @@ public class Authentication {
         System.out.println("Role: " + user.role());
 
         // ROLE-BASED UI ROUTING
-
         switch (user.role().toUpperCase()) {
 
             case "ADMINISTRATOR" -> {
@@ -204,5 +215,15 @@ public class Authentication {
 
             default -> System.out.println("Unknown user role.");
         }
+
+        // RECORD LOGOUT ACTIVITY
+        activityLogDao.logAction(
+                user.id(),
+                "USER_LOGOUT",
+                "User " + user.username()
+                        + " (ID: " + user.id() + ") logged out."
+        );
+
+        System.out.println("\nLogout activity recorded.");
     }
 }
