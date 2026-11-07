@@ -29,11 +29,11 @@ public class AdminMenu {
             System.out.println("1. View All System Users");
             System.out.println("2. View Pending Registrations");
             System.out.println("3. Approve User Account");
-            System.out.println("4. Logout");
+            System.out.println("4. Update User Role and Status");
+            System.out.println("5. Logout");
             System.out.println("==================================");
-            System.out.print("Enter choice: ");
 
-            choice = readChoice();
+            choice = readIntInput("Enter choice: ");
 
             switch (choice) {
 
@@ -50,6 +50,10 @@ public class AdminMenu {
                     break;
 
                 case 4:
+                    updateUser(admin);
+                    break;
+
+                case 5:
                     System.out.println("\nAdmin logged out successfully!");
                     break;
 
@@ -57,7 +61,7 @@ public class AdminMenu {
                     System.out.println("\nInvalid choice. Please try again.");
             }
 
-        } while (choice != 4);
+        } while (choice != 5);
     }
 
     // VIEW ALL SYSTEM USERS
@@ -95,16 +99,14 @@ public class AdminMenu {
         displayUserTable(pendingUsers);
 
         System.out.println("\nEnter 0 to cancel approval.");
-        System.out.print("Enter User ID to approve: ");
 
-        int userId = readChoice();
+        int userId = readIntInput("Enter User ID to approve: ");
 
         if (userId == 0) {
             System.out.println("Approval cancelled.");
             return;
         }
 
-        // VERIFY USER ID IN PENDING LIST
         boolean userExists = pendingUsers.stream()
                 .anyMatch(user -> user.id() == userId);
 
@@ -115,7 +117,6 @@ public class AdminMenu {
             return;
         }
 
-        // APPROVE ACCOUNT
         boolean approved = userDao.approveUser(userId);
 
         if (approved) {
@@ -125,6 +126,103 @@ public class AdminMenu {
         } else {
             System.out.println(
                     "\nUnable to approve user account."
+            );
+        }
+    }
+
+    // UPDATE USER ROLE AND STATUS
+    private void updateUser(User admin) {
+
+        System.out.println("\n========== UPDATE USER ROLE AND STATUS ==========");
+
+        List<User> users = userDao.getAllUsers();
+
+        if (users.isEmpty()) {
+            System.out.println("No user records found.");
+            return;
+        }
+
+        displayUserTable(users);
+
+        System.out.println("\nEnter 0 to cancel update.");
+
+        // GET TARGET USER ID
+        int userId = readIntInput("Enter User ID to update: ");
+
+        if (userId == 0) {
+            System.out.println("Update cancelled.");
+            return;
+        }
+
+        // CHECK IF USER EXISTS
+        User targetUser = users.stream()
+                .filter(user -> user.id() == userId)
+                .findFirst()
+                .orElse(null);
+
+        if (targetUser == null) {
+            System.out.println("User ID not found.");
+            return;
+        }
+
+        // SELF-EDIT RESTRICTION
+        if (userId == admin.id()) {
+            System.out.println(
+                    "WARNING: Modifying the currently active admin account is restricted."
+            );
+            return;
+        }
+
+        // DISPLAY SELECTED USER
+        System.out.println("\nSelected User:");
+        System.out.println("ID: " + targetUser.id());
+        System.out.println("Username: " + targetUser.username());
+        System.out.println("Current Role: " + targetUser.role());
+        System.out.println("Current Status: " + targetUser.status());
+
+        // GET NEW ROLE
+        System.out.println("\nAvailable Roles:");
+        System.out.println("ADMINISTRATOR");
+        System.out.println("LABORATORY STAFF");
+        System.out.println("EQUIPMENT VIEWER");
+        System.out.println("Enter 0 to cancel.");
+
+        String newRole = readValidRole();
+
+        if (newRole == null) {
+            System.out.println("Update cancelled.");
+            return;
+        }
+
+        // GET NEW STATUS
+        System.out.println("\nAvailable Statuses:");
+        System.out.println("APPROVED");
+        System.out.println("PENDING");
+        System.out.println("Enter 0 to cancel.");
+
+        String newStatus = readValidStatus();
+
+        if (newStatus == null) {
+            System.out.println("Update cancelled.");
+            return;
+        }
+
+        // UPDATE DATABASE
+        boolean updated = userDao.updateUserRoleAndStatus(
+                userId,
+                newRole,
+                newStatus
+        );
+
+        if (updated) {
+            System.out.println(
+                    "\nUser role and status updated successfully!"
+            );
+            System.out.println("New Role: " + newRole);
+            System.out.println("New Status: " + newStatus);
+        } else {
+            System.out.println(
+                    "\nUnable to update user account."
             );
         }
     }
@@ -169,9 +267,11 @@ public class AdminMenu {
     }
 
     // SAFE INTEGER INPUT
-    private int readChoice() {
+    private int readIntInput(String prompt) {
 
         while (true) {
+
+            System.out.print(prompt);
 
             String input = scanner.nextLine().trim();
 
@@ -179,8 +279,66 @@ public class AdminMenu {
                 return Integer.parseInt(input);
 
             } catch (NumberFormatException e) {
-                System.out.print("Invalid input. Enter a number: ");
+                System.out.println(
+                        "Invalid input. Please enter a valid number."
+                );
             }
+        }
+    }
+
+    // VALIDATE USER ROLE
+    private String readValidRole() {
+
+        while (true) {
+
+            System.out.print("Enter new role: ");
+
+            String role = scanner.nextLine().trim().toUpperCase();
+
+            if (role.equals("0")) {
+                return null;
+            }
+
+            if (role.equals("ADMINISTRATOR")
+                    || role.equals("LABORATORY STAFF")
+                    || role.equals("EQUIPMENT VIEWER")) {
+
+                return role;
+            }
+
+            System.out.println(
+                    "Invalid role. Please enter a valid role."
+            );
+            System.out.println(
+                    "Allowed roles: ADMINISTRATOR, LABORATORY STAFF, EQUIPMENT VIEWER"
+            );
+            System.out.println("Enter 0 to cancel.");
+        }
+    }
+
+    // VALIDATE USER STATUS
+    private String readValidStatus() {
+
+        while (true) {
+
+            System.out.print("Enter new status: ");
+
+            String status = scanner.nextLine().trim().toUpperCase();
+
+            if (status.equals("0")) {
+                return null;
+            }
+
+            if (status.equals("APPROVED")
+                    || status.equals("PENDING")) {
+
+                return status;
+            }
+
+            System.out.println(
+                    "Invalid status. Please enter APPROVED or PENDING."
+            );
+            System.out.println("Enter 0 to cancel.");
         }
     }
 }
